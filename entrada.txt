@@ -1,0 +1,4 @@
+program correto ; 
+var a , b , c : int ;
+var d , e , f : bool ;
+.
