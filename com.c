@@ -317,46 +317,6 @@ char * abreLeArquivo(char *arquivo){
     return bufferEntrada;
 }
 
-int match(char t, char tokbuffer[], int *pos){
-	char c = ' ';
-	size_t len;
-	char *palavra$;
-	
-	//Se o lookahead for comentario pegar prox token
-	while (lookahead == 'c'){
-		
-		palavra = strtok(NULL, delimit);
-		len = strlen(palavra);
-		palavra$ = malloc(len + 1 + 1 );
-		strcpy(palavra$, palavra);
-		palavra$[len] = c;
-		palavra$[len + 1] = '\0';
-		inttok = scanner(palavra$);
-		append(tokbuffer, toktranslate(inttok));
-		lookahead = tokbuffer[++(*pos)];
-
-	}
-	
-	if (lookahead == t){
-		palavra = strtok(NULL, delimit);
-		if (palavra != NULL)
-		{
-			len = strlen(palavra);
-			palavra$ = malloc(len + 1 + 1 );
-			strcpy(palavra$, palavra);
-			palavra$[len] = c;
-			palavra$[len + 1] = '\0';
-			inttok = scanner(palavra$);
-			append(tokbuffer, toktranslate(inttok));
-			lookahead = tokbuffer[++(*pos)];
-		}
-		return(1);
-	}
-	printf("Erro token esperado: %c | Lookahead: %c\n", t, lookahead);
-	return(0);  
-}
-
-
 void trataErro(){
 	printf("\n\nERRO DE SINTAXE\n\n");
 	/* Faca um tratamento melhor */
@@ -1155,6 +1115,47 @@ int scanner(char tokbuffer[]) {
 		return COMMENT;
 }
 
+int match(char t, char tokbuffer[], int *pos){
+	char c = ' ';
+	size_t len;
+	char *palavra$;
+	
+	//Se o lookahead for comentario pegar prox token
+	while (lookahead == 'c'){
+		
+		palavra = strtok(NULL, delimit);
+		len = strlen(palavra);
+		palavra$ = malloc(len + 1 + 1 );
+		strcpy(palavra$, palavra);
+		palavra$[len] = c;
+		palavra$[len + 1] = '\0';
+		inttok = scanner(palavra$);
+		append(tokbuffer, toktranslate(inttok));
+		lookahead = tokbuffer[++(*pos)];
+
+	}
+	
+	if (lookahead == t){
+		printf("Lookahead: %c ",lookahead);
+		palavra = strtok(NULL, delimit);
+		if (palavra != NULL)
+		{
+			len = strlen(palavra);
+			palavra$ = malloc(len + 1 + 1 );
+			strcpy(palavra$, palavra);
+			palavra$[len] = c;
+			palavra$[len + 1] = '\0';
+			inttok = scanner(palavra$);
+			append(tokbuffer, toktranslate(inttok));
+			lookahead = tokbuffer[++(*pos)];
+			printf("Matched: %c\n",t);
+		}
+		return(1);
+	}
+	//printf("Erro token esperado: %c | Lookahead: %c\n", t, lookahead);
+	return(0);  
+}
+
 int PROGRAMA(char tokbuffer[], int *pos){
 	if (match('p', tokbuffer, pos) &&
 		IDENTIFICADOR(tokbuffer,pos) &&
@@ -1177,13 +1178,17 @@ int IDENTIFICADOR(char tokbuffer[], int *pos){
 	return(0);	
 }
 
+//erro aqui
 int BLOCO(char tokbuffer[], int *pos){
-	if
-	(PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos)
-	)
-	{
-		return(1);
+	
+	if(PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos)){
+		if (PARTE_DECLARACOES_SUBROTINAS(tokbuffer,pos)){
+			return(1);
+		} 
 	}
+	if (PARTE_DECLARACOES_SUBROTINAS(tokbuffer,pos)){
+		return(1);
+	} 
 	printf("Erro na leitura BLOCO\n");
 	return(0);
 }
@@ -1194,6 +1199,7 @@ int PARTE_DECLARACOES_VARIAVEIS(char tokbuffer[], int *pos){
 	{
 		while (match(';',tokbuffer, pos)) { 
 			gambi++;
+			printf("gambi: %d\n",gambi);
 			DECLARACAO_VARIAVEIS(tokbuffer,pos);
 		}
 		if (gambi == arra){
@@ -1208,6 +1214,7 @@ int PARTE_DECLARACOES_VARIAVEIS(char tokbuffer[], int *pos){
 int DECLARACAO_VARIAVEIS(char tokbuffer[], int *pos){
 	if(match('v', tokbuffer, pos)){
 		arra++;
+		printf("arra: %d\n",arra);
 		if (
 			LISTA_IDENTIFICADORES(tokbuffer,pos) && 
 			match(':',tokbuffer,pos) &&
@@ -1237,5 +1244,53 @@ int TIPO(char tokbuffer[], int *pos){
 			return(1);
 		}
 		printf("Erro na leitura TIPO\n");
+	return(0);
+}
+
+int PARTE_DECLARACOES_SUBROTINAS(char palavra[], int *pos){
+	while (DECLARACAO_PROCEDIMENTO(palavra,pos)) {match(';',palavra,pos);}
+	return(1);
+	//printf("Erro na leitura PARTE_DECLARACOES_SUBROTINAS");
+	//return(0);
+}
+
+int DECLARACAO_PROCEDIMENTO(char palavra[], int *pos){ 
+	if( match('P',palavra,pos) && IDENTIFICADOR(palavra,pos) ){
+		
+		if (PARAMETROS_FORMAIS(palavra,pos)){
+			if(match(';',palavra,pos) && BLOCO(palavra,pos)){
+				return (1);
+			}
+			return (0);
+		}
+		if(match(';',palavra,pos) && BLOCO(palavra,pos)){
+			return (1);
+		}
+	} 
+	printf("Erro na leitura DECLARACAO_PROCEDIMENTO\n");
+	return(0);
+}
+
+int PARAMETROS_FORMAIS(char palavra[], int *pos){
+	if( match('(',palavra,pos) && PARAMETRO_FORMAL(palavra,pos)){
+		while (match(';', palavra,pos)) { PARAMETRO_FORMAL(palavra,pos);}
+		match(')', palavra, pos);
+		return(1);
+	} 	
+	printf("Erro na leitura PARAMETROS_FORMAIS\n");
+	return(0);
+}
+
+int PARAMETRO_FORMAL(char palavra[], int *pos){
+	if (match('v',palavra,pos)){
+		if (IDENTIFICADOR(palavra,pos) && match(':',palavra,pos) && TIPO(palavra,pos)){
+			return(1);
+		}
+		return (0);
+	}
+	if (IDENTIFICADOR(palavra,pos) && match(':',palavra,pos) && TIPO(palavra,pos)){
+		return(1);
+	}
+	printf("Erro na leitura PARAMETRO_FORMAL\n");
 	return(0);
 }
