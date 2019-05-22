@@ -94,6 +94,9 @@ char * abreLeArquivo(char *arquivo);
 char lookahead;
 int gambi;
 int arra;
+int urra;
+int seila;
+int fofo;
 //Token como um int
 int inttok;
 //Lexema atual
@@ -1136,7 +1139,7 @@ int match(char t, char tokbuffer[], int *pos){
 	}
 	
 	if (lookahead == t){
-		printf("Lookahead: %c ",lookahead);
+		//printf("Lookahead: %c ",lookahead);
 		palavra = strtok(NULL, delimit);
 		if (palavra != NULL)
 		{
@@ -1148,7 +1151,7 @@ int match(char t, char tokbuffer[], int *pos){
 			inttok = scanner(palavra$);
 			append(tokbuffer, toktranslate(inttok));
 			lookahead = tokbuffer[++(*pos)];
-			printf("Matched: %c\n",t);
+			//printf("Matched: %c\n",t);
 		}
 		return(1);
 	}
@@ -1181,14 +1184,13 @@ int IDENTIFICADOR(char tokbuffer[], int *pos){
 //erro aqui
 int BLOCO(char tokbuffer[], int *pos){
 	
-	if(PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos)){
-		if (PARTE_DECLARACOES_SUBROTINAS(tokbuffer,pos)){
-			return(1);
+	if(PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos) || PARTE_DECLARACOES_SUBROTINAS(tokbuffer,pos)){
+		if (PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos) || PARTE_DECLARACOES_SUBROTINAS(tokbuffer,pos)){
+			if (gambi == arra  && arra == urra){
+				return (1);
+			}
 		} 
 	}
-	if (PARTE_DECLARACOES_SUBROTINAS(tokbuffer,pos)){
-		return(1);
-	} 
 	printf("Erro na leitura BLOCO\n");
 	return(0);
 }
@@ -1215,13 +1217,12 @@ int DECLARACAO_VARIAVEIS(char tokbuffer[], int *pos){
 	if(match('v', tokbuffer, pos)){
 		arra++;
 		printf("arra: %d\n",arra);
-		if (
-			LISTA_IDENTIFICADORES(tokbuffer,pos) && 
-			match(':',tokbuffer,pos) &&
-			TIPO(tokbuffer,pos)
-			)
-		{
-			return(1);
+		if (LISTA_IDENTIFICADORES(tokbuffer,pos) && match(':',tokbuffer,pos)){
+				if (TIPO(tokbuffer,pos)){
+					urra++;
+					printf("urra: %d\n",urra);
+					return(1);
+				}
 		}
 	}
 	printf("Erro na leitura DECLARACAO_VARIAVEIS\n");
@@ -1230,8 +1231,14 @@ int DECLARACAO_VARIAVEIS(char tokbuffer[], int *pos){
 
 int LISTA_IDENTIFICADORES(char tokbuffer[], int *pos){ 
 	if( IDENTIFICADOR(tokbuffer,pos)){
-		while(match(',',tokbuffer, pos)) { IDENTIFICADOR(tokbuffer,pos);}
-		return(1);
+		while(match(',',tokbuffer, pos)) {
+			seila++;
+			if (IDENTIFICADOR(tokbuffer,pos))
+				fofo++;
+		}
+		if (seila == fofo){
+			return(1);
+		}
 	}
 	printf("Erro na leitura LISTA_IDENTIFICADORES\n");
 	return(0);
