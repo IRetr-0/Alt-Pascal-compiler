@@ -83,6 +83,12 @@ int BOOLEANO(char tokbuffer[], int *pos);
 int IDENTIFICADOR(char tokbuffer[], int *pos);
 int NUMERO(char tokbuffer[], int *pos);
 
+
+int REPETE_PARTE_DECLARACOES_VARIAVEIS(char tokbuffer[], int *pos);
+int REPETE_LISTA_IDENTIFICADORES(char tokbuffer[], int *pos);
+int REPETE_PARAMETROS_FORMAIS(char tokbuffer[], int *pos);
+int REPETE_COMANDO_COMPOSTO(char tokbuffer[], int *pos);
+
 char toktranslate(int inttok);
 void append(char* s, char c);
 void trataErro();
@@ -92,17 +98,18 @@ char * abreLeArquivo(char *arquivo);
 
 //global
 char lookahead;
-int gambi;
-int arra;
-int urra;
-int seila;
-int fofo;
 //Token como um int
 int inttok;
 //Lexema atual
 char *palavra;
 //Separador de palavras
 char delimit[] = " \t\r\n\v\f"; //Ignorados para separar a string
+//Sanity check do token virgula
+int expectcomma;
+int sanitycomma;
+//Sanity check do token ptvirgula
+int expectscolon;
+int sanitycolon;
 
 //_____________________________________MAIN_____________________________________
 int main(){
@@ -154,9 +161,9 @@ int main(){
 	    printf("\nSequencia de tokens %s reconhecidos\n", tokbuffer);
 		printf("\nFIM DA ANALISE SINTATICA\n");
 	}
-	else 
+	else{ 
 	    trataErro();
-	
+	}
 	return 0;
 }
 
@@ -966,8 +973,8 @@ int scanner(char tokbuffer[]) {
 		return COLON;
 
 	q95:
-		// RETORNA :=
-		return ATTRIBUTION;
+		if(tokbuffer[c]== ' ' ) {c++; goto q118;}
+		return ERROR;
 
     q96:
         //RETORNA INT
@@ -1062,6 +1069,9 @@ int scanner(char tokbuffer[]) {
         //RETORNAR SINAL MAIS +
 		return ADDITION;
 
+	q118:
+		return ATTRIBUTION;
+	
 	q120:
         //RETORNAR SINAL >= MAIOR-IGUAL
 		return MOREEQUALTHAN;
@@ -1139,7 +1149,7 @@ int match(char t, char tokbuffer[], int *pos){
 	}
 	
 	if (lookahead == t){
-		//printf("Lookahead: %c ",lookahead);
+		if (lookahead == ','){ expectcomma++; }
 		palavra = strtok(NULL, delimit);
 		if (palavra != NULL)
 		{
@@ -1151,7 +1161,7 @@ int match(char t, char tokbuffer[], int *pos){
 			inttok = scanner(palavra$);
 			append(tokbuffer, toktranslate(inttok));
 			lookahead = tokbuffer[++(*pos)];
-			//printf("Matched: %c\n",t);
+			printf("Matched: %c\n",t);
 		}
 		return(1);
 	}
@@ -1168,7 +1178,6 @@ int PROGRAMA(char tokbuffer[], int *pos){
 	{
 		return(1);
 	}
-	printf("Erro na leitura PROGRAMA\n");
 	return(0);
 }
 
@@ -1177,71 +1186,100 @@ int IDENTIFICADOR(char tokbuffer[], int *pos){
 	if (match('_', tokbuffer, pos))
 		return(1);
 	
-	printf("Erro na leitura IDENTIFICADOR\n");
 	return(0);	
 }
 
-//erro aqui
+//HELP ME
 int BLOCO(char tokbuffer[], int *pos){
 	
-	if(PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos) || PARTE_DECLARACOES_SUBROTINAS(tokbuffer,pos)){
-		if (PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos) || PARTE_DECLARACOES_SUBROTINAS(tokbuffer,pos)){
-			if (gambi == arra  && arra == urra){
-				return (1);
-			}
-		} 
+	if(PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos)){}
+	
+	if(PARTE_DECLARACOES_SUBROTINAS(tokbuffer,pos)){}
+	
+	if(COMANDO_COMPOSTO(tokbuffer,pos)){}
+	
+	//Remover no futuro
+	return(1);
+}
+
+/*
+<parte de declarações de variáveis>::=
+var <declaração de variáveis>
+{; <declaração de variáveis>} ;
+virou --->
+
+<parte de declarações de variáveis>::=
+var <declaração de variáveis> <repete parte declaracoes variaveis> ;
+
+<repete_parte_declaracoes_variaveis>::=
+ ; <declaração de variáveis> <repete parte declaracoes variaveis> | &
+
+*/
+
+int PARTE_DECLARACOES_VARIAVEIS(char tokbuffer[], int *pos){
+	if(DECLARACAO_VARIAVEIS(tokbuffer,pos)){
+		if(REPETE_PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos)){
+			return (1);
+		}
 	}
-	printf("Erro na leitura BLOCO\n");
 	return(0);
 }
 
-int PARTE_DECLARACOES_VARIAVEIS(char tokbuffer[], int *pos){
-	int temp;
-	if ( DECLARACAO_VARIAVEIS(tokbuffer,pos) )
-	{
-		while (match(';',tokbuffer, pos)) { 
-			gambi++;
-			printf("gambi: %d\n",gambi);
-			DECLARACAO_VARIAVEIS(tokbuffer,pos);
+int REPETE_PARTE_DECLARACOES_VARIAVEIS(char tokbuffer[], int *pos){
+	if (match(';', tokbuffer, pos)){
+		expectscolon++;
+		if (DECLARACAO_VARIAVEIS(tokbuffer,pos)){
+			REPETE_PARTE_DECLARACOES_VARIAVEIS(tokbuffer, pos);
+			if(sanitycolon == expectscolon)
+				return(1);
 		}
-		if (gambi == arra){
-			return (1);
-		}
-		
 	}
-	printf("Erro na leitura PARTE_DECLARACOES_VARIAVEIS\n");
-	return(0);
+	return (0);
 }
 
 int DECLARACAO_VARIAVEIS(char tokbuffer[], int *pos){
-	if(match('v', tokbuffer, pos)){
-		arra++;
-		printf("arra: %d\n",arra);
-		if (LISTA_IDENTIFICADORES(tokbuffer,pos) && match(':',tokbuffer,pos)){
-				if (TIPO(tokbuffer,pos)){
-					urra++;
-					printf("urra: %d\n",urra);
-					return(1);
-				}
+	if (match('v', tokbuffer, pos)){
+		sanitycolon++;
+		if(LISTA_IDENTIFICADORES(tokbuffer, pos) &&
+	       match(':',tokbuffer,pos) &&
+		   TIPO(tokbuffer, pos)){
+				return (1);
 		}
 	}
-	printf("Erro na leitura DECLARACAO_VARIAVEIS\n");
+	return(0);
+}
+/*
+<lista de identificadores>::=
+<identificador>{, <identificador>}
+Virou --->
+
+<lista de identificadores>::=
+<identificador> <repete lista de identificadores>
+
+<repete lista de identificadores>::=
+, <identificador> <repete lista de identificadores> | &
+*/
+
+
+int LISTA_IDENTIFICADORES(char tokbuffer[], int *pos){ 
+	if (IDENTIFICADOR(tokbuffer, pos)){
+		if (REPETE_LISTA_IDENTIFICADORES(tokbuffer, pos)){
+			//So retorna 1 se a quantidade de virgulas eh a quantidade esperada
+			if(sanitycomma == expectcomma){
+				return (1);
+			}
+		}
+	}
 	return(0);
 }
 
-int LISTA_IDENTIFICADORES(char tokbuffer[], int *pos){ 
-	if( IDENTIFICADOR(tokbuffer,pos)){
-		while(match(',',tokbuffer, pos)) {
-			seila++;
-			if (IDENTIFICADOR(tokbuffer,pos))
-				fofo++;
-		}
-		if (seila == fofo){
-			return(1);
-		}
+int REPETE_LISTA_IDENTIFICADORES(char tokbuffer[], int *pos){
+	if(match(',',tokbuffer,pos) && IDENTIFICADOR(tokbuffer, pos)){
+		REPETE_LISTA_IDENTIFICADORES(tokbuffer, pos);
+		sanitycomma++;
+		return (1);
 	}
-	printf("Erro na leitura LISTA_IDENTIFICADORES\n");
-	return(0);
+	return (0);
 }
 
 int TIPO(char tokbuffer[], int *pos){
@@ -1250,54 +1288,280 @@ int TIPO(char tokbuffer[], int *pos){
 		{
 			return(1);
 		}
-		printf("Erro na leitura TIPO\n");
+	return(0);
+}
+/*
+<parte de declarações de subrotinas>::=
+<declaração de procedimento> ; <parte de declarações de subrotinas>
+*/
+int PARTE_DECLARACOES_SUBROTINAS(char tokbuffer[], int *pos){
+	if(DECLARACAO_PROCEDIMENTO(tokbuffer,pos) && match(';',tokbuffer,pos)){
+		PARTE_DECLARACOES_SUBROTINAS(tokbuffer, pos);
+		return (1);
+	}
 	return(0);
 }
 
-int PARTE_DECLARACOES_SUBROTINAS(char palavra[], int *pos){
-	while (DECLARACAO_PROCEDIMENTO(palavra,pos)) {match(';',palavra,pos);}
-	return(1);
-	//printf("Erro na leitura PARTE_DECLARACOES_SUBROTINAS");
-	//return(0);
-}
-
-int DECLARACAO_PROCEDIMENTO(char palavra[], int *pos){ 
-	if( match('P',palavra,pos) && IDENTIFICADOR(palavra,pos) ){
-		
-		if (PARAMETROS_FORMAIS(palavra,pos)){
-			if(match(';',palavra,pos) && BLOCO(palavra,pos)){
+int DECLARACAO_PROCEDIMENTO(char tokbuffer[], int *pos){ 
+	if( match('P',tokbuffer,pos) && IDENTIFICADOR(tokbuffer,pos) ){
+		if (PARAMETROS_FORMAIS(tokbuffer,pos)){
+			if(match(';',tokbuffer,pos) && BLOCO(tokbuffer,pos)){
 				return (1);
 			}
 			return (0);
 		}
-		if(match(';',palavra,pos) && BLOCO(palavra,pos)){
+		if(match(';',tokbuffer,pos) && BLOCO(tokbuffer,pos)){
 			return (1);
 		}
 	} 
-	printf("Erro na leitura DECLARACAO_PROCEDIMENTO\n");
 	return(0);
 }
 
-int PARAMETROS_FORMAIS(char palavra[], int *pos){
-	if( match('(',palavra,pos) && PARAMETRO_FORMAL(palavra,pos)){
-		while (match(';', palavra,pos)) { PARAMETRO_FORMAL(palavra,pos);}
-		match(')', palavra, pos);
-		return(1);
+int PARAMETROS_FORMAIS(char tokbuffer[], int *pos){
+	if(match('(',tokbuffer,pos) && PARAMETRO_FORMAL(tokbuffer,pos)){
+		REPETE_PARAMETROS_FORMAIS(tokbuffer,pos);
+		if (match(')',tokbuffer,pos)){
+			return(1);
+		}
 	} 	
-	printf("Erro na leitura PARAMETROS_FORMAIS\n");
 	return(0);
 }
 
-int PARAMETRO_FORMAL(char palavra[], int *pos){
-	if (match('v',palavra,pos)){
-		if (IDENTIFICADOR(palavra,pos) && match(':',palavra,pos) && TIPO(palavra,pos)){
+int REPETE_PARAMETROS_FORMAIS(char tokbuffer[], int *pos){
+	if (match(';', tokbuffer,pos) && PARAMETRO_FORMAL(tokbuffer,pos)){
+		REPETE_PARAMETROS_FORMAIS(tokbuffer,pos);
+		return (1);
+	}
+	return (0);
+}
+
+int PARAMETRO_FORMAL(char tokbuffer[], int *pos){
+	if (match('v',tokbuffer,pos)){
+		if (IDENTIFICADOR(tokbuffer,pos) && match(':',tokbuffer,pos) && TIPO(tokbuffer,pos)){
 			return(1);
 		}
 		return (0);
 	}
-	if (IDENTIFICADOR(palavra,pos) && match(':',palavra,pos) && TIPO(palavra,pos)){
+	if (IDENTIFICADOR(tokbuffer,pos) && match(':',tokbuffer,pos) && TIPO(tokbuffer,pos)){
 		return(1);
 	}
-	printf("Erro na leitura PARAMETRO_FORMAL\n");
 	return(0);
+}
+
+//_____________________NOVAS______________________
+/*
+<comando composto>::= begin <comando>{ ; <comando>} end
+---> Virou:
+<comando composto>::= begin <comando> <repete_comando_composto> end
+<repete_comando_composto>:==  ; <comando> <repete_comando_composto> | &
+*/
+
+int COMANDO_COMPOSTO(char tokbuffer[], int *pos){
+	if (match('b',tokbuffer,pos) && COMANDO(tokbuffer,pos)){
+		REPETE_COMANDO_COMPOSTO(tokbuffer,pos);
+		if(match('E',tokbuffer,pos)){
+			if(match(';',tokbuffer,pos) && COMANDO_COMPOSTO(tokbuffer, pos)){
+				return (1);
+			}
+			return (0);
+		}
+	}
+	return(0);
+}
+
+int REPETE_COMANDO_COMPOSTO(char tokbuffer[], int *pos){
+	if (match(';',tokbuffer,pos) && COMANDO(tokbuffer,pos)){
+		if(REPETE_COMANDO_COMPOSTO(tokbuffer,pos)){
+			return (1);
+		}
+	}
+	return(0);
+}
+
+int COMANDO(char tokbuffer[], int *pos){
+	if (ATRIBUICAO(tokbuffer,pos)) {return (1);}
+	if (CHAMADA_PROCEDIMENTO(tokbuffer,pos)) {return (1);}
+	if (COMANDO_COMPOSTO(tokbuffer,pos)) {return (1);}
+	if (COMANDO_CONDICIONAL(tokbuffer,pos)) {return (1);}
+	if (COMANDO_REPETITIVO(tokbuffer,pos)) {return (1);}
+	if (match('W',tokbuffer,pos) && 
+	    match('(',tokbuffer,pos) && 
+	    IDENTIFICADOR(tokbuffer,pos) && 
+	    match(')',tokbuffer,pos)) {return (1);}
+		
+	return(0);
+}
+
+int ATRIBUICAO(char tokbuffer[], int *pos){
+	if( VARIAVEL(tokbuffer,pos) &&
+		match('a',tokbuffer,pos) &&
+		EXPRESSAO(tokbuffer,pos))
+		{
+			return(1);
+		}
+	return(0);
+}
+
+int CHAMADA_PROCEDIMENTO(char tokbuffer[], int *pos){
+	if(IDENTIFICADOR(tokbuffer,pos)){
+		if(match('(',tokbuffer,pos) && 
+		   LISTA_PARAMETROS(tokbuffer,pos) &&
+		   match(')',tokbuffer,pos))
+		{
+			return (1);
+		}
+	return (1);
+	}
+	
+	return(0);
+}
+
+int LISTA_PARAMETROS(char tokbuffer[], int *pos){
+		if (IDENTIFICADOR(tokbuffer,pos)){
+			while (match(';',tokbuffer,pos)){
+				if (IDENTIFICADOR(tokbuffer,pos)){printf("");}
+				if (NUMERO(tokbuffer,pos)){printf("");}
+				if (BOOLEANO(tokbuffer,pos)){printf("");}
+			}
+		}
+		if (NUMERO(tokbuffer,pos)){
+			while (match(';',tokbuffer,pos)){
+				if (IDENTIFICADOR(tokbuffer,pos)){printf("");}
+				if (NUMERO(tokbuffer,pos)){printf("");}
+				if (BOOLEANO(tokbuffer,pos)){printf("");}
+			}
+		}
+		if (BOOLEANO(tokbuffer,pos)){
+			while (match(';',tokbuffer,pos)){
+				if (IDENTIFICADOR(tokbuffer,pos)){printf("");}
+				if (NUMERO(tokbuffer,pos)){printf("");}
+				if (BOOLEANO(tokbuffer,pos)){printf("");}
+			}
+		}
+		return (1);
+		//return(0);	
+}
+
+int COMANDO_CONDICIONAL(char tokbuffer[], int *pos){
+	if (match('i',tokbuffer,pos) &&
+		match('(',tokbuffer,pos) &&
+		EXPRESSAO(tokbuffer,pos) &&
+		match(')',tokbuffer,pos) &&
+		match('-',tokbuffer,pos) &&
+		COMANDO(tokbuffer,pos) )
+		{
+			if(match('e',tokbuffer,pos) && COMANDO(tokbuffer,pos)){
+				return(1);
+			}
+			return(1);
+		}	
+	return(0);
+}
+
+int COMANDO_REPETITIVO(char tokbuffer[], int *pos){
+	if( match('w',tokbuffer,pos) &&
+		match('(',tokbuffer,pos) &&
+		EXPRESSAO(tokbuffer,pos) &&
+		match(')',tokbuffer,pos) &&
+		match('d',tokbuffer,pos) &&
+		COMANDO(tokbuffer,pos) ){
+			return(1);
+		}
+	return(0);	
+}
+
+int EXPRESSAO(char tokbuffer[], int *pos){
+	if( EXPRESSAO_SIMPLES(tokbuffer,pos)){
+		if( RELACAO(tokbuffer,pos) && EXPRESSAO_SIMPLES(tokbuffer,pos)){
+			return(1);
+		}
+		return(1);
+	}
+	return(0);	
+}
+
+int RELACAO(char tokbuffer[], int *pos){
+	if (match('=',tokbuffer,pos)) {return 1;}
+	if (match('<',tokbuffer,pos)) {return 1;}
+	if (match('[',tokbuffer,pos)) {return 1;}
+	if (match(']',tokbuffer,pos)) {return 1;}
+	if (match('>',tokbuffer,pos)) {return 1;}
+			
+	return(0);	
+}
+
+int EXPRESSAO_SIMPLES(char tokbuffer[], int *pos){
+	if(match('+',tokbuffer,pos)){
+		if(TERMO(tokbuffer,pos)){
+			while(match('+',tokbuffer,pos) || match('-',tokbuffer,pos)){
+				TERMO(tokbuffer,pos);
+			}
+			return (1);
+		}
+		return (0);
+	}
+	if( match('-',tokbuffer,pos)){
+		if(TERMO(tokbuffer,pos)){
+			while(match('+',tokbuffer,pos) || match('-',tokbuffer,pos)){
+				TERMO(tokbuffer,pos);
+			}
+			return (1);
+		}
+		return (0);
+	}
+	if(TERMO(tokbuffer,pos)){
+		while(match('+',tokbuffer,pos) || match('-',tokbuffer,pos)){
+			TERMO(tokbuffer,pos);
+		}
+		return (1);
+	}
+	
+	return(0);	
+}
+
+int TERMO(char tokbuffer[], int *pos){
+		
+	if (FATOR(tokbuffer,pos)) { 
+		while ( match('*',tokbuffer,pos) || match('/',tokbuffer,pos) ){ FATOR(tokbuffer,pos);}
+		return(1);
+	}
+	return(0);	
+}
+
+int FATOR(char tokbuffer[], int *pos){
+
+	if(VARIAVEL(tokbuffer,pos)){return(1);}
+	if(NUMERO(tokbuffer,pos)){return(1);}
+	if(BOOLEANO(tokbuffer,pos)){return(1);}
+	if(match('(',tokbuffer,pos) && 
+	EXPRESSAO_SIMPLES(tokbuffer,pos) && 
+	match(')',tokbuffer,pos))
+	{
+		return(1);
+	}
+	
+	return(0);	
+}
+
+int VARIAVEL(char tokbuffer[], int *pos){
+	if(IDENTIFICADOR(tokbuffer,pos) ){
+		return(1);
+	}
+	return(0);	
+}
+
+int BOOLEANO(char tokbuffer[], int *pos){
+	
+	if(match('t',tokbuffer,pos)){return(1);}
+	if(match('f',tokbuffer,pos)){return(1);}
+	
+	return(0);	
+}
+
+int NUMERO(char tokbuffer[], int *pos){
+	//solicitar TOKEN
+	if (match('n', tokbuffer, pos))
+		return(1);
+	
+	return(0);	
 }
