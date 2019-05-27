@@ -111,9 +111,128 @@ int sanitycomma;
 int expectscolon;
 int sanitycolon;
 
+int gambi = 0;
+int tranca = 0;
+
+//_________________________________SEMANTICA____________________________________
+
+struct LinkedList{
+    char identificadores[200][200];
+    char* tipo;
+	int N;
+	
+	 struct LinkedList *next;
+ };
+
+typedef struct LinkedList *node; //Define node as pointer of data type struct LinkedList
+
+
+node createNode(){
+    node temp; // declare a node
+    temp = (node)malloc(sizeof(struct LinkedList)); // allocate memory using malloc()
+    temp->next = NULL;// make next point to NULL
+    return temp;//return the new node
+}
+
+node addNode(node head, char value[200][200], char* type, int n){
+    node temp,p;// declare two nodes temp and p
+    int i;
+	temp = createNode();//createNode will return a new node with data = value and next pointing to NULL.
+    
+	// add element's value to data part of node
+	for (i= 0; i < 200; i++)
+		strcpy(temp->identificadores[i], value[i]);
+   
+	temp->tipo = type;
+	temp->N = n;
+	
+	if(head == NULL){
+        head = temp;     //when linked list is empty
+    }
+    else{
+        p  = head;//assign head to p 
+        while(p->next != NULL){
+            p = p->next;//traverse the list until p is the last node.The last node always points to NULL.
+        }
+        p->next = temp;//Point the previous last node to the new node created.
+    }
+    return head;
+}
+
+void showTable(node head){
+	int i;
+	node p;
+	p = head;
+	while(p != NULL){
+		for (i = 0; i < p->N; i++)
+			printf("%s : %s\n", p->identificadores[i], p->tipo);
+		printf("\n");
+		p = p->next;
+	}
+}
+
+void checkConflicting(node head){
+	int i,j;
+	node p;
+	p = head;
+	char aux[200][200];
+	int n = 0;
+	char nomes[200][200];
+	char tipos[200][200];
+	int m = 0;
+	
+	while(p != NULL){
+		for (i = 0; i < p->N; i++){
+			strcpy(aux[n], p->identificadores[i]);
+			n++;
+			strcpy(aux[n], p->tipo);
+			n++;
+		}
+		p = p->next;
+	}
+	
+	for (i = 0; i < n; i++){
+		if (i%2 == 0){
+			//printf("%s%s,", aux[c],aux[c+1]);
+			strcpy(nomes[m], aux[i]);
+			strcpy(tipos[m], aux[i+1]);
+			m++;
+		}
+	}
+	
+	/*
+	for (i = 0; i < m; i++){
+		printf("%s,", nomes[i]);
+	}
+	printf("\n");
+	for (i = 0; i < m; i++){
+		printf("%s,", tipos[i]);
+	}
+	*/
+	
+	for (i = 0; i < m; i++){
+		for (j = i+1; j < m; j++){
+			if (!strcmp(nomes[i],nomes[j])){
+				if (strcmp(tipos[i],tipos[j])){
+					printf("\nTipos conflitantes:\n");
+					printf("%s : %s\n",nomes[i],tipos[i]);
+					printf("%s : %s\n",nomes[j],tipos[j]);
+				}
+			}
+		}
+	}
+	
+}
+
+node simbolos;
+char listaId[200][200];
+char* tipo;
+int T = 0;
+int catch = 0;
+
 //_____________________________________MAIN_____________________________________
 int main(){
-
+	
 	//Buffer com todos os tokens, adicionados cada vez que o scanner faz um pedido
 	char tokbuffer[500];
 	
@@ -158,8 +277,9 @@ int main(){
 	}
 	
 	if (PROGRAMA(tokbuffer, &pos)){
-	    printf("\nSequencia de tokens %s reconhecidos\n", tokbuffer);
+		printf("\nSequencia de tokens %s reconhecidos\n", tokbuffer);
 		printf("\nFIM DA ANALISE SINTATICA\n");
+		//todaTabela();
 	}
 	else{ 
 	    trataErro();
@@ -1128,10 +1248,12 @@ int scanner(char tokbuffer[]) {
 		return COMMENT;
 }
 
+
 int match(char t, char tokbuffer[], int *pos){
 	char c = ' ';
 	size_t len;
 	char *palavra$;
+	char *identificador;
 	
 	//Se o lookahead for comentario pegar prox token
 	while (lookahead == 'c'){
@@ -1148,7 +1270,38 @@ int match(char t, char tokbuffer[], int *pos){
 
 	}
 	
+	
 	if (lookahead == t){
+		//______Semantica______
+		
+		if (!tranca){
+			simbolos = createNode();
+			tranca = 1;
+		}
+		
+		if (lookahead == 'v') {catch = 1;};
+	
+		//printf("look: %c, catch: %d\n", lookahead, catch);
+		if (lookahead == '_' && catch == 1) { 
+			strcpy(listaId[T], palavra);
+			T++;
+		}
+		
+		if (lookahead == 'I' || lookahead == 'B'){
+			catch = 0;
+			if (lookahead == 'I') { tipo = "i";}
+			if (lookahead == 'B') { tipo = "b";}
+			
+			addNode(simbolos, listaId, tipo, T);
+			//showTable(simbolos);
+			//printf("___________________________");
+			T = 0;
+		}
+		
+		if (lookahead == 'W'){printf("Tabela de simbolos quanto write foi parsado:\n") ;showTable(simbolos);}
+		if (lookahead == '.'){checkConflicting(simbolos);}
+		//fim da semantica
+		
 		if (lookahead == ','){ expectcomma++; }
 		palavra = strtok(NULL, delimit);
 		if (palavra != NULL)
@@ -1161,7 +1314,7 @@ int match(char t, char tokbuffer[], int *pos){
 			inttok = scanner(palavra$);
 			append(tokbuffer, toktranslate(inttok));
 			lookahead = tokbuffer[++(*pos)];
-			printf("Matched: %c\n",t);
+			//printf("Matched: %c\n",t);
 		}
 		return(1);
 	}
