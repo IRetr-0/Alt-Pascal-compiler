@@ -115,31 +115,34 @@ int gambi = 0;
 int tranca = 0;
 
 //_________________________________SEMANTICA____________________________________
-
+//Usando uma lista ligada bem adaptada
 struct LinkedList{
-    char identificadores[200][200];
-    char* tipo;
+    //Nome
+	char identificadores[200][200];
+    //Tipo
+	char* tipo;
+	//Tamanho (detalhe de implementacao)
 	int N;
-	
-	 struct LinkedList *next;
+	//ponteiro para a prox
+	struct LinkedList *next;
  };
 
-typedef struct LinkedList *node; //Define node as pointer of data type struct LinkedList
+typedef struct LinkedList *node; //Node eh o ponteiro do tipo de dado LinkedList
 
-
+//cria um node e retorna
 node createNode(){
-    node temp; // declare a node
-    temp = (node)malloc(sizeof(struct LinkedList)); // allocate memory using malloc()
-    temp->next = NULL;// make next point to NULL
-    return temp;//return the new node
+    node temp;
+    temp = (node)malloc(sizeof(struct LinkedList));
+    temp->next = NULL;
+    return temp;
 }
 
+//Adiciona uma tabela de simbolos
 node addNode(node head, char value[200][200], char* type, int n){
-    node temp,p;// declare two nodes temp and p
+    node temp,p;
     int i;
-	temp = createNode();//createNode will return a new node with data = value and next pointing to NULL.
+	temp = createNode();
     
-	// add element's value to data part of node
 	for (i= 0; i < 200; i++)
 		strcpy(temp->identificadores[i], value[i]);
    
@@ -147,18 +150,19 @@ node addNode(node head, char value[200][200], char* type, int n){
 	temp->N = n;
 	
 	if(head == NULL){
-        head = temp;     //when linked list is empty
+        head = temp;     
     }
     else{
-        p  = head;//assign head to p 
+        p  = head;
         while(p->next != NULL){
-            p = p->next;//traverse the list until p is the last node.The last node always points to NULL.
+            p = p->next;
         }
-        p->next = temp;//Point the previous last node to the new node created.
+        p->next = temp;
     }
     return head;
 }
 
+//Mostra a tabela de simbolos
 void showTable(node head){
 	int i;
 	node p;
@@ -171,6 +175,7 @@ void showTable(node head){
 	}
 }
 
+//checa por tipos conflitantes na tabela de simbolos
 void checkConflicting(node head){
 	int i,j;
 	node p;
@@ -226,9 +231,13 @@ void checkConflicting(node head){
 
 node simbolos;
 char listaId[200][200];
+char listaProc[200][200];
 char* tipo;
 int T = 0;
+int P = 0;
 int catch = 0;
+int cotch = 0;
+int cutch = 0;
 
 //_____________________________________MAIN_____________________________________
 int main(){
@@ -287,6 +296,7 @@ int main(){
 	return 0;
 }
 
+//Cast do token int pra char
 char toktranslate(int inttok){
 	switch(inttok){
 		case ID:
@@ -406,6 +416,7 @@ char toktranslate(int inttok){
 	}
 }
 
+//strcpy modificado para aceitar chars
 void append(char* s, char c)
 {
     int len = strlen(s);
@@ -413,6 +424,7 @@ void append(char* s, char c)
     s[len+1] = '\0';
 }
 
+//le um arquivo e coloca ele em um buffer
 char * abreLeArquivo(char *arquivo){
     char *bufferEntrada;
     int size;
@@ -450,6 +462,7 @@ char * abreLeArquivo(char *arquivo){
 void trataErro(){
 	printf("\n\nERRO DE SINTAXE\n\n");
 	/* Faca um tratamento melhor */
+	/* deu nao */
 }
 
 int scanner(char tokbuffer[]) {
@@ -1248,12 +1261,13 @@ int scanner(char tokbuffer[]) {
 		return COMMENT;
 }
 
-
+//match chama scanner e pede um token novo
 int match(char t, char tokbuffer[], int *pos){
 	char c = ' ';
 	size_t len;
 	char *palavra$;
 	char *identificador;
+	char lookbehind;
 	
 	//Se o lookahead for comentario pegar prox token
 	while (lookahead == 'c'){
@@ -1272,6 +1286,8 @@ int match(char t, char tokbuffer[], int *pos){
 	
 	
 	if (lookahead == t){
+		lookbehind = tokbuffer[strlen(tokbuffer)-2];
+		//printf("lookahead: %c lookbehind: %c\n", lookahead,lookbehind);
 		//______Semantica______
 		
 		if (!tranca){
@@ -1279,7 +1295,7 @@ int match(char t, char tokbuffer[], int *pos){
 			tranca = 1;
 		}
 		
-		if (lookahead == 'v') {catch = 1;};
+		if (lookahead == 'v' && lookbehind != '(') {catch = 1;};
 	
 		//printf("look: %c, catch: %d\n", lookahead, catch);
 		if (lookahead == '_' && catch == 1) { 
@@ -1287,25 +1303,57 @@ int match(char t, char tokbuffer[], int *pos){
 			T++;
 		}
 		
-		if (lookahead == 'I' || lookahead == 'B'){
+		if (lookahead == 'I' || lookahead == 'B' && catch){
 			catch = 0;
 			if (lookahead == 'I') { tipo = "i";}
 			if (lookahead == 'B') { tipo = "b";}
 			
-			addNode(simbolos, listaId, tipo, T);
+			if (listaId)
+				addNode(simbolos, listaId, tipo, T);
 			//showTable(simbolos);
 			//printf("___________________________");
 			T = 0;
 		}
 		
+		if (lookahead == 'P') {cotch = 1;};
+		if (lookahead == '_' && cotch == 1) { 
+			cotch = 0;
+			strcpy(listaProc[P], palavra);
+			P++;
+		}
+		if (lookahead == 'v' && lookbehind == '(') {
+			cutch = 1;
+		}
+		if (lookahead == '_' && cutch == 1) { 
+			cutch = 0;
+			strcpy(listaProc[P], palavra);
+			P++;
+		}
+		
+		if (lookahead == 'I' || lookahead == 'B' && cutch){
+			cutch = 0;
+			if (lookahead == 'I') { tipo = "i";}
+			if (lookahead == 'B') { tipo = "b";}
+			
+			if (listaProc)
+				addNode(simbolos, listaProc, tipo, P);
+			//showTable(simbolos);
+			//printf("___________________________");
+			P = 0;
+		}
+		
+		
 		if (lookahead == 'W'){printf("Tabela de simbolos quanto write foi parsado:\n") ;showTable(simbolos);}
 		if (lookahead == '.'){checkConflicting(simbolos);}
 		//fim da semantica
 		
+		//____sintatica___
 		if (lookahead == ','){ expectcomma++; }
+		//pega prox palavra
 		palavra = strtok(NULL, delimit);
 		if (palavra != NULL)
 		{
+			//gera token
 			len = strlen(palavra);
 			palavra$ = malloc(len + 1 + 1 );
 			strcpy(palavra$, palavra);
@@ -1316,12 +1364,17 @@ int match(char t, char tokbuffer[], int *pos){
 			lookahead = tokbuffer[++(*pos)];
 			//printf("Matched: %c\n",t);
 		}
+		//se lookahead deu match retorna 1
 		return(1);
 	}
-	//printf("Erro token esperado: %c | Lookahead: %c\n", t, lookahead);
+	//se lookahead não deu match retorna 0
 	return(0);  
 }
 
+/*
+<programa>::=
+program<identificador>;<bloco>.
+*/
 int PROGRAMA(char tokbuffer[], int *pos){
 	if (match('p', tokbuffer, pos) &&
 		IDENTIFICADOR(tokbuffer,pos) &&
@@ -1334,15 +1387,18 @@ int PROGRAMA(char tokbuffer[], int *pos){
 	return(0);
 }
 
+//solicita token ID
 int IDENTIFICADOR(char tokbuffer[], int *pos){
-	//solicitar TOKEN
 	if (match('_', tokbuffer, pos))
 		return(1);
 	
 	return(0);	
 }
 
-//HELP ME
+/*
+<bloco>::=
+[<parte de declarações de variáveis>][<parte de declarações de sub-rotinas>]<comando composto>
+*/
 int BLOCO(char tokbuffer[], int *pos){
 	
 	if(PARTE_DECLARACOES_VARIAVEIS(tokbuffer,pos)){}
@@ -1390,6 +1446,10 @@ int REPETE_PARTE_DECLARACOES_VARIAVEIS(char tokbuffer[], int *pos){
 	return (0);
 }
 
+/*
+<declaração de variáveis>::=
+<lista de identificadores>: <tipo>
+*/
 int DECLARACAO_VARIAVEIS(char tokbuffer[], int *pos){
 	if (match('v', tokbuffer, pos)){
 		sanitycolon++;
@@ -1455,6 +1515,11 @@ int PARTE_DECLARACOES_SUBROTINAS(char tokbuffer[], int *pos){
 	return(0);
 }
 
+/*
+<declaração de procedimento>::=
+procedure<identificador>[<parâmetros formais>] ; <bloco>;
+*/
+
 int DECLARACAO_PROCEDIMENTO(char tokbuffer[], int *pos){ 
 	if( match('P',tokbuffer,pos) && IDENTIFICADOR(tokbuffer,pos) ){
 		if (PARAMETROS_FORMAIS(tokbuffer,pos)){
@@ -1470,6 +1535,17 @@ int DECLARACAO_PROCEDIMENTO(char tokbuffer[], int *pos){
 	return(0);
 }
 
+/*
+<parâmetros formais> ::=
+(<parâmetro formal>{ ; <parâmetro formal>} )
+virou--->
+
+<parâmetros formais> ::=
+(<parâmetro formal>) <repete parâmetros formais>
+
+<repete parâmetros formais>::=
+; <parâmetro formal> <repete parâmetros formais>
+*/
 int PARAMETROS_FORMAIS(char tokbuffer[], int *pos){
 	if(match('(',tokbuffer,pos) && PARAMETRO_FORMAL(tokbuffer,pos)){
 		REPETE_PARAMETROS_FORMAIS(tokbuffer,pos);
@@ -1488,6 +1564,11 @@ int REPETE_PARAMETROS_FORMAIS(char tokbuffer[], int *pos){
 	return (0);
 }
 
+/*
+<parâmetro formal>::=
+[var] <identificador>: <tipo>
+*/
+
 int PARAMETRO_FORMAL(char tokbuffer[], int *pos){
 	if (match('v',tokbuffer,pos)){
 		if (IDENTIFICADOR(tokbuffer,pos) && match(':',tokbuffer,pos) && TIPO(tokbuffer,pos)){
@@ -1501,7 +1582,6 @@ int PARAMETRO_FORMAL(char tokbuffer[], int *pos){
 	return(0);
 }
 
-//_____________________NOVAS______________________
 /*
 <comando composto>::= begin <comando>{ ; <comando>} end
 ---> Virou:
@@ -1530,6 +1610,15 @@ int REPETE_COMANDO_COMPOSTO(char tokbuffer[], int *pos){
 	}
 	return(0);
 }
+/*
+<comando>::=
+<atribuição>| 
+<chamada de procedimento>| 
+<comando composto>| 
+<comando condicional>| 
+<comando repetitivo>| 
+write(<identiicador>)
+*/
 
 int COMANDO(char tokbuffer[], int *pos){
 	if (ATRIBUICAO(tokbuffer,pos)) {return (1);}
@@ -1544,6 +1633,10 @@ int COMANDO(char tokbuffer[], int *pos){
 		
 	return(0);
 }
+/*
+<atribuição>::=
+<variável>:= <expressão>
+*/
 
 int ATRIBUICAO(char tokbuffer[], int *pos){
 	if( VARIAVEL(tokbuffer,pos) &&
@@ -1554,6 +1647,10 @@ int ATRIBUICAO(char tokbuffer[], int *pos){
 		}
 	return(0);
 }
+/*
+<chamada de procedimento>::=
+<identificador>[(<lista de parâmetros>)]
+*/
 
 int CHAMADA_PROCEDIMENTO(char tokbuffer[], int *pos){
 	if(IDENTIFICADOR(tokbuffer,pos)){
@@ -1568,6 +1665,11 @@ int CHAMADA_PROCEDIMENTO(char tokbuffer[], int *pos){
 	
 	return(0);
 }
+/*
+<lista de parâmetros>::=
+[ (<identificador>| <numero>| <bool>)
+{;(<identificador>| <numero>| <bool>) }]
+*/
 
 int LISTA_PARAMETROS(char tokbuffer[], int *pos){
 		if (IDENTIFICADOR(tokbuffer,pos)){
@@ -1594,6 +1696,10 @@ int LISTA_PARAMETROS(char tokbuffer[], int *pos){
 		return (1);
 		//return(0);	
 }
+/*
+<comando condicional>::=
+if(<expressão>)then<comando>[else<comando>]
+*/
 
 int COMANDO_CONDICIONAL(char tokbuffer[], int *pos){
 	if (match('i',tokbuffer,pos) &&
@@ -1610,6 +1716,10 @@ int COMANDO_CONDICIONAL(char tokbuffer[], int *pos){
 		}	
 	return(0);
 }
+/*
+<comando repetitivo>::=
+while(<expressão>)do <comando>
+*/
 
 int COMANDO_REPETITIVO(char tokbuffer[], int *pos){
 	if( match('w',tokbuffer,pos) &&
@@ -1622,6 +1732,10 @@ int COMANDO_REPETITIVO(char tokbuffer[], int *pos){
 		}
 	return(0);	
 }
+/*
+<expressão>::=
+<expressão simples>[<relação><expressão simples>]
+*/
 
 int EXPRESSAO(char tokbuffer[], int *pos){
 	if( EXPRESSAO_SIMPLES(tokbuffer,pos)){
@@ -1632,6 +1746,9 @@ int EXPRESSAO(char tokbuffer[], int *pos){
 	}
 	return(0);	
 }
+/*
+<relação>::== | <>| <| <= | >= | >
+*/
 
 int RELACAO(char tokbuffer[], int *pos){
 	if (match('=',tokbuffer,pos)) {return 1;}
@@ -1642,6 +1759,10 @@ int RELACAO(char tokbuffer[], int *pos){
 			
 	return(0);	
 }
+/*
+<expressão simples>::=
+[+ | -] <termo>{(+ | -) <termo>}
+*/
 
 int EXPRESSAO_SIMPLES(char tokbuffer[], int *pos){
 	if(match('+',tokbuffer,pos)){
@@ -1671,6 +1792,9 @@ int EXPRESSAO_SIMPLES(char tokbuffer[], int *pos){
 	
 	return(0);	
 }
+/*
+<termo>::=<fator>{(* | / ) <fator>}
+*/
 
 int TERMO(char tokbuffer[], int *pos){
 		
@@ -1680,6 +1804,10 @@ int TERMO(char tokbuffer[], int *pos){
 	}
 	return(0);	
 }
+/*
+<fator>::=
+<variavel>| <número>| <bool>| (<expressãosimples>)
+*/
 
 int FATOR(char tokbuffer[], int *pos){
 
@@ -1695,6 +1823,9 @@ int FATOR(char tokbuffer[], int *pos){
 	
 	return(0);	
 }
+/*
+<variável>::=<identificador>
+*/
 
 int VARIAVEL(char tokbuffer[], int *pos){
 	if(IDENTIFICADOR(tokbuffer,pos) ){
@@ -1702,6 +1833,9 @@ int VARIAVEL(char tokbuffer[], int *pos){
 	}
 	return(0);	
 }
+/*
+<bool>::=true| false
+*/
 
 int BOOLEANO(char tokbuffer[], int *pos){
 	
@@ -1711,8 +1845,8 @@ int BOOLEANO(char tokbuffer[], int *pos){
 	return(0);	
 }
 
+//Solicita token numero
 int NUMERO(char tokbuffer[], int *pos){
-	//solicitar TOKEN
 	if (match('n', tokbuffer, pos))
 		return(1);
 	
