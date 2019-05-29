@@ -243,7 +243,8 @@ int cutch = 0;
 int main(){
 	
 	//Buffer com todos os tokens, adicionados cada vez que o scanner faz um pedido
-	char tokbuffer[500];
+	char tokbuffer[200];
+	tokbuffer[0] = NULL;
 	
 	//Buffer com todos os lexemas do arquivo de entrada
 	char *input;
@@ -420,7 +421,7 @@ char toktranslate(int inttok){
 void append(char* s, char c)
 {
     int len = strlen(s);
-    s[len] = c;
+	s[len] = c;
     s[len+1] = '\0';
 }
 
